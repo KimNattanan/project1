@@ -1,4 +1,0 @@
-numpy
-opencv
-pillow
-face-detection-tflite
