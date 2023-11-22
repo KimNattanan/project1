@@ -1,0 +1,9 @@
+Cat
+Bird
+Dog
+Hamster
+Rabbit
+Goat
+Sheep
+Mosquito
+Robster
