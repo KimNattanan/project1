@@ -10,7 +10,8 @@ from PIL import Image
 
 stack=""
 items=open("items.txt","r")
-for e in items: stack=stack+e
+for e in items:
+    if(e!='\n'): stack=stack+e
 stack=stack.split('\n')
 stack0=copy.deepcopy(stack)
 random.shuffle(stack)
@@ -64,13 +65,16 @@ time=0;
 info0=INFO((150,40),(255,255,255));
 info1=INFO((180,70),(0,255,0));
 info2=INFO((180,70),(255,0,255));
-info3=INFO((150,40),(150,150,150))
+info3=INFO((150,40),(150,150,150));
+infoMid=INFO((300,40),(0,255,0));
 boxL=BOX(info0);
 boxR=BOX(info0);
+boxMid=BOX(infoMid);
 offX=77
 offY=100
 low=30
 select_t=1
+play_cnt=2
 class GAME:
     def __init__(self):
         self.state=0
@@ -80,6 +84,8 @@ class GAME:
         self.rand_t2=3
         self.t0=0
         self.t1=0
+        self.cnt=0
+        self.last_ans=""
     def roll(self,box):
         box.info=copy.deepcopy(info3)
         box.val=copy.deepcopy(stack0[random.randint(0,len(stack0)-1)])
@@ -149,9 +155,14 @@ def upd(frame,faces):
             elif(boxL.state==1 and time>=boxL.t1):
                 boxL.state=2
                 boxL.info=copy.deepcopy(info2)
-                game.state=0
-                game.randL=0
-                game.randR=1
+                game.cnt+=1
+                if(game.cnt<play_cnt):
+                    game.state=0
+                    game.randL=0
+                    game.randR=1
+                else:
+                    game.state=3
+                    game.last_ans=boxL.val
                 result.write(boxL.val+" > "+boxR.val+"\n")
 
         else:
@@ -171,25 +182,41 @@ def upd(frame,faces):
             elif(boxR.state==1 and time>=boxR.t1):
                 boxR.state=2
                 boxR.info=copy.deepcopy(info2)
-                game.state=0
-                game.randL=1
-                game.randR=0
+                game.cnt+=1
+                if(game.cnt<play_cnt):
+                    game.state=0
+                    game.randL=1
+                    game.randR=0
+                else:
+                    game.state=3
+                    game.last_ans=boxR.val
                 result.write(boxR.val+" > "+boxL.val+"\n")
-    else:
+    elif(game.state!=3):
         game.upd()
 
-    obj0=np.array([(xmid-offX-boxL.info.sz[0],y1-offY),
-                   (xmid-offX,y1-offY),
-                   (xmid-offX,y1-offY-boxL.info.sz[1]),
-                   (xmid-offX-boxL.info.sz[0],y1-offY-boxL.info.sz[1])])
-    obj1=np.array([(xmid+offX,y1-offY),
-                   (xmid+offX+boxR.info.sz[0],y1-offY),
-                   (xmid+offX+boxR.info.sz[0],y1-offY-boxR.info.sz[1]),
-                   (xmid+offX,y1-offY-boxR.info.sz[1])])
-    cv2.drawContours(frame2,[obj0],0,boxL.info.col,-1,cv2.LINE_AA)
-    cv2.drawContours(frame2,[obj1],0,boxR.info.col,-1,cv2.LINE_AA)
-    cv2.putText(frame2,boxL.val,obj0[0],cv2.FONT_ITALIC,1,(0,0,0),2,cv2.LINE_AA)
-    cv2.putText(frame2,boxR.val,obj1[0],cv2.FONT_ITALIC,1,(0,0,0),2,cv2.LINE_AA)
+    if(game.state!=3):
+        obj0=np.array([(xmid-offX-boxL.info.sz[0],y1-offY),
+                    (xmid-offX,y1-offY),
+                    (xmid-offX,y1-offY-boxL.info.sz[1]),
+                    (xmid-offX-boxL.info.sz[0],y1-offY-boxL.info.sz[1])]);
+        obj1=np.array([(xmid+offX,y1-offY),
+                    (xmid+offX+boxR.info.sz[0],y1-offY),
+                    (xmid+offX+boxR.info.sz[0],y1-offY-boxR.info.sz[1]),
+                    (xmid+offX,y1-offY-boxR.info.sz[1])]);
+        txtSz0=cv2.getTextSize(boxL.val,cv2.FONT_ITALIC,1,2)
+        txtSz1=cv2.getTextSize(boxR.val,cv2.FONT_ITALIC,1,2)
+        cv2.drawContours(frame2,[obj0],0,boxL.info.col,-1,cv2.LINE_AA)
+        cv2.drawContours(frame2,[obj1],0,boxR.info.col,-1,cv2.LINE_AA)
+        cv2.putText(frame2,boxL.val,((int)((obj0[0][0]+obj0[1][0]-txtSz0[0][0])/2),obj0[0,1]),cv2.FONT_ITALIC,1,(0,0,0),2,cv2.LINE_AA)
+        cv2.putText(frame2,boxR.val,((int)((obj1[0][0]+obj1[1][0]-txtSz1[0][0])/2),obj1[0][1]),cv2.FONT_ITALIC,1,(0,0,0),2,cv2.LINE_AA)
+    else:
+        obj2=np.array([(xmid-(int)(boxMid.info.sz[0]/2),y1-offY),
+                       (xmid+(int)(boxMid.info.sz[0]/2),y1-offY),
+                       (xmid+(int)(boxMid.info.sz[0]/2),y1-offY-boxMid.info.sz[1]),
+                       (xmid-(int)(boxMid.info.sz[0]/2),y1-offY-boxMid.info.sz[1])]);
+        txtSz2=cv2.getTextSize(game.last_ans,cv2.FONT_ITALIC,1,2)
+        cv2.drawContours(frame2,[obj2],0,boxMid.info.col,-1,cv2.LINE_AA)
+        cv2.putText(frame2,game.last_ans,((int)((obj2[0][0]+obj2[1][0]-txtSz2[0][0])/2),obj2[0][1]),cv2.FONT_ITALIC,1,(0,0,0),2,cv2.LINE_AA)
     return frame2
 
 
@@ -206,7 +233,7 @@ while True:
 
     if(len(faces)): frame2=upd(frame,faces)
 
-    print(boxL.val,boxR.val);
+    # print(boxL.val,boxR.val);
     cv2.imshow('frame', frame2)
     key=cv2.waitKey(1)
     if cv2.getWindowProperty("frame", cv2.WND_PROP_VISIBLE) <1:
